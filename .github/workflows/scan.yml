@@ -4,16 +4,26 @@ on:
   push:
     branches: [ main ]
  
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+ 
 jobs:
   scan:
     runs-on: ubuntu-latest
  
     steps:
-    - name: Checkout
+    - name: Checkout Code
       uses: actions/checkout@v4
  
-    - name: Trivy Scan
-      uses: aquasecurity/trivy-action@0.28.0
-      with:
-        scan-type: fs
-        scan-ref: .
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install -y trivy
+ 
+    - name: Run Trivy Scan
+      run: |
+        trivy fs . --format table --exit-code 0

@@ -1,0 +1,44 @@
+trigger:
+- main
+ 
+pool:
+  vmImage: ubuntu-latest
+ 
+variables:
+  TF_DIR: env/azure
+ 
+stages:
+ 
+# 🔹 Stage 1 - Security Scan
+- stage: Scan
+  jobs:
+  - job: Trivy
+    steps:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
+        sudo dpkg -i trivy_*.deb
+        trivy fs .
+      displayName: "Security Scan"
+ 
+# 🔹 Stage 2 - Terraform Deploy
+- stage: Deploy_AKS
+  dependsOn: Scan
+  jobs:
+  - job: Terraform
+    steps:
+ 
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: '1.5.7'
+ 
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'YOUR-SERVICE-CONNECTION'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          cd $(TF_DIR)
+          terraform init
+          terraform apply -auto-approve
